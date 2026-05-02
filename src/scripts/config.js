@@ -1,6 +1,7 @@
 const APP_CONFIG = {
   detectionConfidenceThreshold: 30, // Lowered to show more results for testing
   analyzingDelay: 2000,
+  cameraPreviewDelay: 1500,
   factsGenerationDelay: 2000,
   detectionRetryInterval: 100,
 };

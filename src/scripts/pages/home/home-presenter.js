@@ -1,7 +1,8 @@
 import CameraService from "../../services/camera.service.js";
 import DetectionService from "../../services/detection.service.js";
 import RootFactsService from "../../services/rootfacts.service.js";
-import { isValidDetection, logError } from "../../utils/index.js";
+import { APP_CONFIG } from "../../config.js";
+import { createDelay, isValidDetection, logError } from "../../utils/index.js";
 
 class HomePresenter {
   #view = null;
@@ -11,7 +12,12 @@ class HomePresenter {
   #isScanning = false;
   #animationFrameId = null;
   #lockedDetectedLabel = null;
+  #hasLockedSnapshot = false;
   #factRequestId = 0;
+  #scanSessionId = 0;
+  #isPreparingScan = false;
+  #isGeneratingFact = false;
+  #queuedFactLabel = null;
 
   constructor(view) {
     this.#view = view;
@@ -48,6 +54,10 @@ class HomePresenter {
   }
 
   async onToggleCamera() {
+    if (this.#isPreparingScan || this.#isGeneratingFact) {
+      return;
+    }
+
     if (this.#isScanning) {
       this.#stopScanning();
     } else {
@@ -56,8 +66,12 @@ class HomePresenter {
   }
 
   async #startScanning() {
+    const scanSessionId = ++this.#scanSessionId;
+    this.#isPreparingScan = true;
+
     try {
       this.#view.setStatus("Memulai Kamera...", false);
+      this.#view.setScanButtonDisabled(true, "Menyiapkan kamera...");
       await this.#cameraService.startCamera(
         "media-video",
         "media-canvas",
@@ -66,21 +80,37 @@ class HomePresenter {
 
       this.#isScanning = true;
       this.#lockedDetectedLabel = null;
+      this.#hasLockedSnapshot = false;
       this.#factRequestId += 1;
       this.#view.setScanningState(true);
       this.#view.showLoadingState();
-      this.#view.setStatus("Memindai...", true);
+      this.#view.setStatus("Kamera Aktif", true);
+      this.#isPreparingScan = false;
+      this.#view.setScanButtonDisabled(false);
 
-      this.#runDetectionLoop();
+      await createDelay(APP_CONFIG.cameraPreviewDelay);
+
+      if (!this.#isScanning || scanSessionId !== this.#scanSessionId) {
+        return;
+      }
+
+      this.#view.setStatus("Memindai...", true);
+      this.#runDetectionLoop(scanSessionId);
     } catch (error) {
       logError("HomePresenter.#startScanning", error);
       this.#view.setStatus("Gagal Membuka Kamera", false);
       this.#view.showError(error.message);
+    } finally {
+      this.#isPreparingScan = false;
+      if (!this.#isGeneratingFact) {
+        this.#view.setScanButtonDisabled(false);
+      }
     }
   }
 
   #stopScanning() {
     this.#isScanning = false;
+    this.#scanSessionId += 1;
 
     if (this.#animationFrameId) {
       cancelAnimationFrame(this.#animationFrameId);
@@ -89,15 +119,16 @@ class HomePresenter {
 
     this.#cameraService.stopCamera();
     this.#lockedDetectedLabel = null;
+    this.#hasLockedSnapshot = false;
     this.#factRequestId += 1;
     this.#view.setScanningState(false);
     this.#view.showIdleState();
     this.#view.setStatus("Model Siap", true);
   }
 
-  #runDetectionLoop() {
+  #runDetectionLoop(scanSessionId) {
     const loop = async () => {
-      if (!this.#isScanning) {
+      if (!this.#isScanning || scanSessionId !== this.#scanSessionId) {
         return;
       }
 
@@ -107,7 +138,11 @@ class HomePresenter {
           try {
             const result = await this.#detectionService.predict(frame);
 
-            if (this.#isScanning && isValidDetection(result)) {
+            if (
+              this.#isScanning &&
+              scanSessionId === this.#scanSessionId &&
+              isValidDetection(result)
+            ) {
               this.#lockDetectionResult(result);
               return;
             }
@@ -117,7 +152,7 @@ class HomePresenter {
         }
       }
 
-      if (!this.#isScanning) {
+      if (!this.#isScanning || scanSessionId !== this.#scanSessionId) {
         return;
       }
 
@@ -139,6 +174,7 @@ class HomePresenter {
     this.#cameraService.stopCamera({ keepSnapshot: hasSnapshot });
 
     this.#lockedDetectedLabel = result.label;
+    this.#hasLockedSnapshot = hasSnapshot;
 
     this.#view.updateConfidence(result.confidence);
     this.#view.showResultState(result.label);
@@ -148,8 +184,16 @@ class HomePresenter {
   }
 
   async #triggerFactGeneration(label) {
+    if (this.#isGeneratingFact) {
+      this.#queuedFactLabel = label;
+      return;
+    }
+
     const requestId = ++this.#factRequestId;
     const tone = this.#view.getCurrentTone();
+    this.#isGeneratingFact = true;
+    this.#queuedFactLabel = null;
+    this.#view.setScanButtonDisabled(true, "Menyiapkan fakta menarik...");
     this.#view.showFactLoading(true);
 
     try {
@@ -174,6 +218,23 @@ class HomePresenter {
     } finally {
       if (requestId === this.#factRequestId) {
         this.#view.showFactLoading(false);
+        this.#view.setScanButtonDisabled(false);
+
+        if (this.#lockedDetectedLabel && !this.#isScanning) {
+          this.#view.setCapturedState(this.#hasLockedSnapshot);
+        }
+      }
+
+      this.#isGeneratingFact = false;
+
+      if (
+        this.#queuedFactLabel &&
+        this.#queuedFactLabel === this.#lockedDetectedLabel &&
+        !this.#isScanning
+      ) {
+        const queuedLabel = this.#queuedFactLabel;
+        this.#queuedFactLabel = null;
+        this.#triggerFactGeneration(queuedLabel);
       }
     }
   }

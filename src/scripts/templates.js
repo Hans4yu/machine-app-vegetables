@@ -15,7 +15,7 @@ export function generateCameraSection() {
         </div>
 
         <div class="camera-controls">
-          <button id="btn-toggle" class="capture-btn" aria-label="Mulai pemindaian" title="Mulai pemindaian">
+          <button id="btn-toggle" class="capture-btn" aria-label="Mulai pemindaian" title="Mulai pemindaian" disabled>
             <i data-lucide="scan-line" width="24" height="24"></i>
           </button>
         </div>

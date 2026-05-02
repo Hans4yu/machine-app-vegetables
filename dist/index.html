@@ -4,12 +4,9 @@
           -apple-system,
           BlinkMacSystemFont,
           sans-serif;
-      }</style><script type="module" src="assets/js/app.a51546370ce32f25806e.bundle.js"></script><link href="assets/css/app.3d3a21c47dd0bf7ad6f0.css" rel="stylesheet"></head><body><div class="app-container"><header class="header"><div class="header-content"><div class="logo"><i data-lucide="sprout" width="24" height="24"></i> <span>RootFacts</span></div><div id="header-status" class="status-pill"><span id="status-dot" class="status-dot"></span> <span id="status-text">Memuat...</span></div></div></header><main id="main-content"></main></div><script>// Only register SW in production (when not on localhost)
-      if (
-        "serviceWorker" in navigator &&
-        window.location.hostname !== "localhost" &&
-        window.location.hostname !== "127.0.0.1"
-      ) {
+      }</style><script type="module" src="assets/js/app.0bdf49259502530c6bf2.bundle.js"></script><link href="assets/css/app.4a9c3e6083de47a2c729.css" rel="stylesheet"></head><body><div class="app-container"><header class="header"><div class="header-content"><div class="logo"><i data-lucide="sprout" width="24" height="24"></i> <span>RootFacts</span></div><div id="header-status" class="status-pill"><span id="status-dot" class="status-dot"></span> <span id="status-text">Memuat...</span></div></div></header><main id="main-content"></main></div><script>// Keep the service worker out of webpack-dev-server, but allow local
+      // production-build testing through http-server/localhost.
+      if ("serviceWorker" in navigator && window.location.port !== "4173") {
         window.addEventListener("load", () => {
           navigator.serviceWorker
             .register("/sw.js")

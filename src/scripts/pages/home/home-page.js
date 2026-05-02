@@ -132,6 +132,21 @@ export default class HomePage {
     }
   }
 
+  setScanButtonDisabled(isDisabled, label = null) {
+    const btn = document.getElementById("btn-toggle");
+    if (!btn) {
+      return;
+    }
+
+    btn.disabled = isDisabled;
+    btn.classList.toggle("processing", isDisabled);
+
+    if (label) {
+      btn.setAttribute("aria-label", label);
+      btn.setAttribute("title", label);
+    }
+  }
+
   setScanningState(isScanning) {
     const btnToggle = document.getElementById("btn-toggle");
     const overlay = document.getElementById("camera-overlay");

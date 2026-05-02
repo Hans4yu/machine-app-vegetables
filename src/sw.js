@@ -1,15 +1,21 @@
-import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
-import { registerRoute } from "workbox-routing";
 import {
-  CacheFirst,
-  NetworkFirst,
-  StaleWhileRevalidate,
-} from "workbox-strategies";
+  precacheAndRoute,
+  cleanupOutdatedCaches,
+  createHandlerBoundToURL,
+} from "workbox-precaching";
+import { registerRoute, NavigationRoute } from "workbox-routing";
+import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 
 cleanupOutdatedCaches();
 
 precacheAndRoute(self.__WB_MANIFEST);
+
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL("/index.html"), {
+    denylist: [/^\/api\//],
+  }),
+);
 
 registerRoute(
   ({ url }) =>
@@ -43,15 +49,7 @@ registerRoute(
   }),
 );
 
-registerRoute(
-  ({ request }) => request.destination === "document",
-  new NetworkFirst({
-    cacheName: "pages-cache-v1",
-    plugins: [new CacheableResponsePlugin({ statuses: [0, 200] })],
-  }),
-);
-
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 

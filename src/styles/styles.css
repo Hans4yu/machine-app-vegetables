@@ -223,12 +223,22 @@ body {
   transform: scale(0.95);
 }
 
+.capture-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
 .capture-btn.scanning {
   background: #ef4444;
 }
 
 .capture-btn.captured {
   background: var(--primary-dark);
+}
+
+.capture-btn.processing {
+  box-shadow: var(--shadow-sm);
 }
 
 .settings-bar {

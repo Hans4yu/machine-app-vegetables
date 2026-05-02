@@ -63,12 +63,9 @@
     </div>
 
     <script>
-      // Only register SW in production (when not on localhost)
-      if (
-        "serviceWorker" in navigator &&
-        window.location.hostname !== "localhost" &&
-        window.location.hostname !== "127.0.0.1"
-      ) {
+      // Keep the service worker out of webpack-dev-server, but allow local
+      // production-build testing through http-server/localhost.
+      if ("serviceWorker" in navigator && window.location.port !== "4173") {
         window.addEventListener("load", () => {
           navigator.serviceWorker
             .register("/sw.js")

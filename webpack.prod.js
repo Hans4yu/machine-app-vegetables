@@ -23,7 +23,7 @@ module.exports = merge(common, {
       swSrc: path.resolve(__dirname, "src/sw.js"),
       swDest: "sw.js",
       maximumFileSizeToCacheInBytes: 50 * 1024 * 1024,
-      exclude: [/\.map$/, /manifest\.json$/],
+      exclude: [/\.map$/],
     }),
   ],
   output: {

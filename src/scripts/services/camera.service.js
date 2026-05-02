@@ -60,6 +60,7 @@ class CameraService {
 
   async startCamera(videoId, canvasId, cameraSelect) {
     this.initializeElements(videoId, canvasId);
+    this.#showLivePreview();
 
     const selectedValue = cameraSelect ? cameraSelect.value : "default";
     const constraints = this._buildConstraints(selectedValue);
@@ -87,7 +88,7 @@ class CameraService {
     }
   }
 
-  stopCamera() {
+  stopCamera({ keepSnapshot = false } = {}) {
     if (this.stream) {
       this.stream.getTracks().forEach((track) => track.stop());
       this.stream = null;
@@ -95,6 +96,10 @@ class CameraService {
 
     if (this.video) {
       this.video.srcObject = null;
+    }
+
+    if (!keepSnapshot) {
+      this.#showLivePreview();
     }
   }
 
@@ -126,6 +131,26 @@ class CameraService {
     return this.canvas;
   }
 
+  freezeCurrentFrame() {
+    if (!this.canvas || !this.video) {
+      return false;
+    }
+
+    try {
+      if (this.isActive()) {
+        const ctx = this.canvas.getContext("2d");
+        ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+      }
+
+      this.canvas.classList.remove("hidden");
+      this.video.classList.add("hidden");
+      return true;
+    } catch (error) {
+      logError("CameraService.freezeCurrentFrame", error);
+      return false;
+    }
+  }
+
   isActive() {
     return !!(
       this.stream &&
@@ -134,6 +159,16 @@ class CameraService {
       !this.video.paused &&
       !this.video.ended
     );
+  }
+
+  #showLivePreview() {
+    if (this.canvas) {
+      this.canvas.classList.add("hidden");
+    }
+
+    if (this.video) {
+      this.video.classList.remove("hidden");
+    }
   }
 }
 

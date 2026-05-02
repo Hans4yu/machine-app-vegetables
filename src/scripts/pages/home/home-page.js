@@ -139,12 +139,40 @@ export default class HomePage {
 
     if (btnToggle) {
       btnToggle.classList.toggle("scanning", isScanning);
+      btnToggle.classList.remove("captured");
+      this.#_setToggleButtonIcon(
+        btnToggle,
+        isScanning ? "square" : "scan-line",
+        isScanning ? "Hentikan pemindaian" : "Mulai pemindaian",
+      );
     }
     if (overlay) {
       overlay.classList.toggle("active", isScanning);
     }
     if (placeholder) {
       if (isScanning) {
+        hideElement(placeholder);
+      } else {
+        showElement(placeholder);
+      }
+    }
+  }
+
+  setCapturedState(hasSnapshot = true) {
+    const btnToggle = document.getElementById("btn-toggle");
+    const overlay = document.getElementById("camera-overlay");
+    const placeholder = document.getElementById("camera-placeholder");
+
+    if (btnToggle) {
+      btnToggle.classList.remove("scanning");
+      btnToggle.classList.add("captured");
+      this.#_setToggleButtonIcon(btnToggle, "refresh-cw", "Pindai ulang");
+    }
+    if (overlay) {
+      overlay.classList.remove("active");
+    }
+    if (placeholder) {
+      if (hasSnapshot) {
         hideElement(placeholder);
       } else {
         showElement(placeholder);
@@ -231,5 +259,15 @@ export default class HomePage {
 
   getCurrentTone() {
     return document.getElementById("tone-select")?.value || "normal";
+  }
+
+  #_setToggleButtonIcon(button, icon, label) {
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    button.innerHTML = `<i data-lucide="${icon}" width="24" height="24"></i>`;
+
+    if (typeof window.lucide !== "undefined") {
+      window.lucide.createIcons();
+    }
   }
 }

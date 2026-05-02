@@ -136,7 +136,9 @@ body {
   box-shadow: var(--shadow-md);
 }
 
-.camera-wrapper video {
+.camera-wrapper video,
+.camera-wrapper canvas {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -223,6 +225,10 @@ body {
 
 .capture-btn.scanning {
   background: #ef4444;
+}
+
+.capture-btn.captured {
+  background: var(--primary-dark);
 }
 
 .settings-bar {

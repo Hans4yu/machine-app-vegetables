@@ -10,7 +10,8 @@ class HomePresenter {
   #rootFactsService = null;
   #isScanning = false;
   #animationFrameId = null;
-  #lastDetectedLabel = null;
+  #lockedDetectedLabel = null;
+  #factRequestId = 0;
 
   constructor(view) {
     this.#view = view;
@@ -64,6 +65,8 @@ class HomePresenter {
       );
 
       this.#isScanning = true;
+      this.#lockedDetectedLabel = null;
+      this.#factRequestId += 1;
       this.#view.setScanningState(true);
       this.#view.showLoadingState();
       this.#view.setStatus("Memindai...", true);
@@ -85,7 +88,8 @@ class HomePresenter {
     }
 
     this.#cameraService.stopCamera();
-    this.#lastDetectedLabel = null;
+    this.#lockedDetectedLabel = null;
+    this.#factRequestId += 1;
     this.#view.setScanningState(false);
     this.#view.showIdleState();
     this.#view.setStatus("Model Siap", true);
@@ -103,19 +107,18 @@ class HomePresenter {
           try {
             const result = await this.#detectionService.predict(frame);
 
-            if (isValidDetection(result)) {
-              this.#view.updateConfidence(result.confidence);
-              this.#view.showResultState(result.label);
-
-              if (result.label !== this.#lastDetectedLabel) {
-                this.#lastDetectedLabel = result.label;
-                this.#triggerFactGeneration(result.label);
-              }
+            if (this.#isScanning && isValidDetection(result)) {
+              this.#lockDetectionResult(result);
+              return;
             }
           } catch (error) {
             logError("HomePresenter.#runDetectionLoop", error);
           }
         }
+      }
+
+      if (!this.#isScanning) {
+        return;
       }
 
       this.#animationFrameId = requestAnimationFrame(loop);
@@ -124,7 +127,28 @@ class HomePresenter {
     this.#animationFrameId = requestAnimationFrame(loop);
   }
 
+  #lockDetectionResult(result) {
+    this.#isScanning = false;
+
+    if (this.#animationFrameId) {
+      cancelAnimationFrame(this.#animationFrameId);
+      this.#animationFrameId = null;
+    }
+
+    const hasSnapshot = this.#cameraService.freezeCurrentFrame();
+    this.#cameraService.stopCamera({ keepSnapshot: hasSnapshot });
+
+    this.#lockedDetectedLabel = result.label;
+
+    this.#view.updateConfidence(result.confidence);
+    this.#view.showResultState(result.label);
+    this.#view.setCapturedState(hasSnapshot);
+    this.#view.setStatus("Hasil Terkunci", true);
+    this.#triggerFactGeneration(result.label);
+  }
+
   async #triggerFactGeneration(label) {
+    const requestId = ++this.#factRequestId;
     const tone = this.#view.getCurrentTone();
     this.#view.showFactLoading(true);
 
@@ -132,6 +156,10 @@ class HomePresenter {
       console.log("Generating fact for:", label, "tone:", tone);
       const fact = await this.#rootFactsService.generateFacts(label, tone);
       console.log("Generated fact:", fact);
+      if (requestId !== this.#factRequestId) {
+        return;
+      }
+
       if (fact) {
         this.#view.displayFact(fact);
       } else {
@@ -140,9 +168,13 @@ class HomePresenter {
       }
     } catch (error) {
       logError("HomePresenter.#triggerFactGeneration", error);
-      this.#view.displayFact("Gagal memuat fakta. Coba lagi.");
+      if (requestId === this.#factRequestId) {
+        this.#view.displayFact("Gagal memuat fakta. Coba lagi.");
+      }
     } finally {
-      this.#view.showFactLoading(false);
+      if (requestId === this.#factRequestId) {
+        this.#view.showFactLoading(false);
+      }
     }
   }
 
@@ -152,7 +184,11 @@ class HomePresenter {
 
   onToneChange(tone) {
     this.#rootFactsService.setTone(tone);
-    this.#lastDetectedLabel = null;
+
+    if (this.#lockedDetectedLabel && !this.#isScanning) {
+      this.#triggerFactGeneration(this.#lockedDetectedLabel);
+      return;
+    }
   }
 
   onCameraChange() {

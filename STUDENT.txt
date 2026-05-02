@@ -1,1 +1,1 @@
-APP_URL=https://your-netlify-url.netlify.app
+APP_URL=https://rootfacts-mvp.netlify.app

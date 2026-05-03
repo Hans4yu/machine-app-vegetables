@@ -4,12 +4,31 @@
           -apple-system,
           BlinkMacSystemFont,
           sans-serif;
-      }</style><script type="module" src="assets/js/app.0bdf49259502530c6bf2.bundle.js"></script><link href="assets/css/app.4a9c3e6083de47a2c729.css" rel="stylesheet"></head><body><div class="app-container"><header class="header"><div class="header-content"><div class="logo"><i data-lucide="sprout" width="24" height="24"></i> <span>RootFacts</span></div><div id="header-status" class="status-pill"><span id="status-dot" class="status-dot"></span> <span id="status-text">Memuat...</span></div></div></header><main id="main-content"></main></div><script>// Keep the service worker out of webpack-dev-server, but allow local
+      }</style><script type="module" src="assets/js/app.39820addb04f7010cae3.bundle.js"></script><link href="assets/css/app.8510e4c7e24367fd9673.css" rel="stylesheet"></head><body><div class="app-container"><header class="header"><div class="header-content"><div class="logo"><i data-lucide="sprout" width="24" height="24"></i> <span>RootFacts</span></div><div id="header-status" class="status-pill"><span id="status-dot" class="status-dot"></span> <span id="status-text">Memuat...</span></div></div></header><main id="main-content"></main></div><script>// Keep the service worker out of webpack-dev-server, but allow local
       // production-build testing through http-server/localhost.
       if ("serviceWorker" in navigator && window.location.port !== "4173") {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("/sw.js")
-            .catch((err) => console.error("SW registration failed:", err));
+        const hasController = Boolean(navigator.serviceWorker.controller);
+        const firstControlReloadKey = "rootfacts-sw-first-control-reload";
+        let refreshing = false;
+
+        navigator.serviceWorker
+          .register("/sw.js")
+          .catch((err) => console.error("SW registration failed:", err));
+
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (refreshing) {
+            return;
+          }
+
+          if (!hasController) {
+            if (sessionStorage.getItem(firstControlReloadKey)) {
+              return;
+            }
+
+            sessionStorage.setItem(firstControlReloadKey, "1");
+          }
+
+          refreshing = true;
+          window.location.reload();
         });
       }</script></body></html>

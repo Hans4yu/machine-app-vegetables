@@ -91,13 +91,22 @@ export default class HomePage {
     }
   }
 
-  showModelLoadingProgress(model, percent) {
-    const safePercent = Math.min(100, Math.max(0, Math.round(percent)));
+  showModelLoadingProgress(model, percent = 0, detail = null) {
+    const numericPercent = Number(percent);
+    const safePercent = Math.min(
+      100,
+      Math.max(
+        0,
+        Math.round(Number.isFinite(numericPercent) ? numericPercent : 0),
+      ),
+    );
     this.#modelProgress[model] = safePercent;
     const totalPercent = Math.round(
       (this.#modelProgress.vision + this.#modelProgress.brain) / 2,
     );
+    const panel = document.getElementById("model-loading-panel");
     const statusText = document.getElementById("status-text");
+    showElement(panel);
     if (statusText) {
       statusText.textContent = "Memuat Model...";
     }
@@ -112,7 +121,7 @@ export default class HomePage {
       progressText.textContent = `${totalPercent}%`;
     }
     if (progressDetail) {
-      progressDetail.textContent = `Vision Encoder ${this.#modelProgress.vision}% · Text Decoder ${this.#modelProgress.brain}%`;
+      progressDetail.textContent = this.#formatModelProgressDetail(detail);
     }
   }
 
@@ -274,6 +283,24 @@ export default class HomePage {
 
   getCurrentTone() {
     return document.getElementById("tone-select")?.value || "normal";
+  }
+
+  #formatModelProgressDetail(detail) {
+    const vision = `Deteksi ${this.#modelProgress.vision}%`;
+
+    if (detail?.files) {
+      const encoder = detail.files.encoder?.progress || 0;
+      const decoder = detail.files.decoder?.progress || 0;
+      const activeMessage = detail.message ? `${detail.message} ` : "";
+
+      return `${activeMessage}${vision} · Encoder ${Math.round(encoder)}% · Decoder ${Math.round(decoder)}%`;
+    }
+
+    if (detail?.message) {
+      return `${detail.message} ${vision} · Fun fact ${this.#modelProgress.brain}%`;
+    }
+
+    return `${vision} · Fun fact ${this.#modelProgress.brain}%`;
   }
 
   #_setToggleButtonIcon(button, icon, label) {

@@ -395,7 +395,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .model-progress-detail {
   margin-top: 0.125rem;
   font-size: 0.68rem;
+  line-height: 1.35;
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .results-section {

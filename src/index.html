@@ -66,10 +66,29 @@
       // Keep the service worker out of webpack-dev-server, but allow local
       // production-build testing through http-server/localhost.
       if ("serviceWorker" in navigator && window.location.port !== "4173") {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("/sw.js")
-            .catch((err) => console.error("SW registration failed:", err));
+        const hasController = Boolean(navigator.serviceWorker.controller);
+        const firstControlReloadKey = "rootfacts-sw-first-control-reload";
+        let refreshing = false;
+
+        navigator.serviceWorker
+          .register("/sw.js")
+          .catch((err) => console.error("SW registration failed:", err));
+
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (refreshing) {
+            return;
+          }
+
+          if (!hasController) {
+            if (sessionStorage.getItem(firstControlReloadKey)) {
+              return;
+            }
+
+            sessionStorage.setItem(firstControlReloadKey, "1");
+          }
+
+          refreshing = true;
+          window.location.reload();
         });
       }
     </script>

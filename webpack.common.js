@@ -22,6 +22,10 @@ module.exports = {
       url: false,
     },
     alias: {
+      "@huggingface/transformers$": path.resolve(
+        __dirname,
+        "node_modules/@huggingface/transformers/dist/transformers.web.min.js",
+      ),
       sharp$: false,
       "onnxruntime-node$": false,
       "onnxruntime-common": path.resolve(
@@ -32,6 +36,11 @@ module.exports = {
     extensions: [".js", ".mjs", ".json"],
   },
   module: {
+    parser: {
+      javascript: {
+        importMeta: false,
+      },
+    },
     rules: [
       {
         test: /\.(png|jpe?g|gif|ico)$/i,
@@ -61,11 +70,6 @@ module.exports = {
         use: ["style-loader", "css-loader"],
       },
     ],
-    parser: {
-      javascript: {
-        importMeta: false,
-      },
-    },
   },
   plugins: [
     new HtmlWebpackPlugin({

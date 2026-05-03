@@ -18,6 +18,7 @@ class HomePresenter {
   #isPreparingScan = false;
   #isGeneratingFact = false;
   #queuedFactLabel = null;
+  #rootFactsLoadPromise = null;
 
   constructor(view) {
     this.#view = view;
@@ -32,14 +33,38 @@ class HomePresenter {
     this.#view.showModelLoadingProgress("brain", 0);
 
     try {
-      await Promise.all([
-        this.#detectionService.loadModel((pct) => {
-          this.#view.showModelLoadingProgress("vision", pct);
-        }),
-        this.#rootFactsService.loadModel((pct) => {
-          this.#view.showModelLoadingProgress("brain", pct);
-        }),
-      ]);
+      await this.#detectionService.loadModel((pct) => {
+        this.#view.showModelLoadingProgress("vision", pct, {
+          message: `Memuat model deteksi ${pct}%...`,
+        });
+      });
+
+      this.#view.showModelLoadingProgress("vision", 100, {
+        message: "Model deteksi siap. Menyiapkan cache offline...",
+      });
+
+      await this.#waitForServiceWorkerReady();
+
+      const isFactModelReady = await this.#loadRootFactsModel((progress) => {
+        this.#view.showModelLoadingProgress(
+          "brain",
+          progress.percent,
+          progress,
+        );
+      });
+
+      if (!isFactModelReady) {
+        this.#view.setStatus("Model Fun Fact Gagal", false);
+        this.#view.setScanButtonDisabled(true, "Model fun fact belum siap");
+        this.#view.showModelLoadingProgress("brain", 0, {
+          message:
+            "Model fun fact belum tersimpan. Buka online sampai progress 100%.",
+        });
+        this.#view.showError(
+          "Model fun fact belum berhasil dimuat. Pastikan koneksi online stabil, tunggu sampai 100%, lalu coba lagi.",
+        );
+        return;
+      }
 
       this.#view.hideModelLoadingProgress();
       this.#view.setStatus("Model Siap", true);
@@ -51,6 +76,48 @@ class HomePresenter {
       this.#view.setStatus("Gagal Memuat Model", false);
       this.#view.showError("Gagal memuat model AI. Silakan refresh halaman.");
     }
+  }
+
+  async #waitForServiceWorkerReady() {
+    if (!("serviceWorker" in navigator) || window.location.port === "4173") {
+      return;
+    }
+
+    try {
+      await Promise.race([navigator.serviceWorker.ready, createDelay(5000)]);
+    } catch (error) {
+      console.warn("Service Worker belum siap, lanjut memuat model.", error);
+    }
+  }
+
+  #loadRootFactsModel(onProgress = null) {
+    if (this.#rootFactsService.isReady()) {
+      if (onProgress) {
+        onProgress({
+          percent: 100,
+          status: "ready",
+          message: "Model fun fact siap.",
+        });
+      }
+      return Promise.resolve(true);
+    }
+
+    if (this.#rootFactsLoadPromise) {
+      return this.#rootFactsLoadPromise;
+    }
+
+    this.#rootFactsLoadPromise = this.#rootFactsService
+      .loadModel(onProgress)
+      .then(() => true)
+      .catch((error) => {
+        logError("HomePresenter.#loadRootFactsModel", error);
+        return false;
+      })
+      .finally(() => {
+        this.#rootFactsLoadPromise = null;
+      });
+
+    return this.#rootFactsLoadPromise;
   }
 
   async onToggleCamera() {
@@ -66,6 +133,14 @@ class HomePresenter {
   }
 
   async #startScanning() {
+    if (!this.#rootFactsService.isReady()) {
+      this.#view.setStatus("Model Fun Fact Belum Siap", false);
+      this.#view.showError(
+        "Model fun fact belum siap. Tunggu proses loading selesai sebelum memindai.",
+      );
+      return;
+    }
+
     const scanSessionId = ++this.#scanSessionId;
     this.#isPreparingScan = true;
 
@@ -197,6 +272,18 @@ class HomePresenter {
     this.#view.showFactLoading(true);
 
     try {
+      const isFactModelReady = await this.#loadRootFactsModel();
+      if (requestId !== this.#factRequestId) {
+        return;
+      }
+
+      if (!isFactModelReady) {
+        this.#view.displayFact(
+          "Model fun fact belum berhasil dimuat. Pastikan koneksi stabil, lalu coba pindai ulang.",
+        );
+        return;
+      }
+
       console.log("Generating fact for:", label, "tone:", tone);
       const fact = await this.#rootFactsService.generateFacts(label, tone);
       console.log("Generated fact:", fact);
@@ -208,7 +295,9 @@ class HomePresenter {
         this.#view.displayFact(fact);
       } else {
         console.warn("Fact generation returned null - service not ready?");
-        this.#view.displayFact("Model AI belum siap. Tunggu sebentar...");
+        this.#view.displayFact(
+          "Model fun fact belum berhasil membuat respons. Coba pindai ulang.",
+        );
       }
     } catch (error) {
       logError("HomePresenter.#triggerFactGeneration", error);

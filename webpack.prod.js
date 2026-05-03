@@ -4,6 +4,8 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const WorkboxWebpackPlugin = require("workbox-webpack-plugin");
 const path = require("path");
 
+const buildRevision = Date.now().toString();
+
 module.exports = merge(common, {
   mode: "production",
   devtool: false,
@@ -22,8 +24,9 @@ module.exports = merge(common, {
     new WorkboxWebpackPlugin.InjectManifest({
       swSrc: path.resolve(__dirname, "src/sw.js"),
       swDest: "sw.js",
+      additionalManifestEntries: [{ url: "/", revision: buildRevision }],
       maximumFileSizeToCacheInBytes: 50 * 1024 * 1024,
-      exclude: [/\.map$/],
+      exclude: [/\.map$/, /(^|\/)_headers$/],
     }),
   ],
   output: {

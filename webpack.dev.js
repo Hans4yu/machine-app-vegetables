@@ -4,7 +4,7 @@ const path = require("path");
 
 module.exports = merge(common, {
   mode: "development",
-  devtool: "eval-source-map",
+  devtool: "source-map",
   devServer: {
     static: [
       // Specific paths first - order matters!

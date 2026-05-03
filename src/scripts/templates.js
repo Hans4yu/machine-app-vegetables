@@ -52,7 +52,7 @@ export function generateCameraSection() {
             <div class="model-progress-track">
               <div id="model-progress-fill" class="model-progress-fill" style="width: 0%"></div>
             </div>
-            <p id="model-progress-detail" class="model-progress-detail">Menyiapkan Vision Encoder dan Text Decoder...</p>
+            <p id="model-progress-detail" class="model-progress-detail">Menyiapkan model deteksi dan fun fact...</p>
           </div>
         </div>
       </div>

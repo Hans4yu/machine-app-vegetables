@@ -4,3 +4,6 @@
 
 /model/*
   Access-Control-Allow-Origin: *
+
+/sw.js
+  Cache-Control: no-cache
